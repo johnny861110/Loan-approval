@@ -1,0 +1,53 @@
+{
+  "model_id": "model_20250810_162453_02ded486",
+  "test_info": {
+    "sample_size": 2000,
+    "prediction_time_seconds": 2.157254219055176,
+    "avg_prediction_time_ms": 1.078627109527588
+  },
+  "performance_metrics": {
+    "accuracy": 0.958,
+    "precision_weighted": 0.957240950772201,
+    "recall_weighted": 0.958,
+    "f1_weighted": 0.9560652211052872,
+    "roc_auc": 0.9784381553990258,
+    "precision_per_class": [
+      0.9611486486486487,
+      0.9330357142857143
+    ],
+    "recall_per_class": [
+      0.9912891986062717,
+      0.7517985611510791
+    ]
+  },
+  "confusion_matrix": {
+    "matrix": [
+      [
+        1707,
+        15
+      ],
+      [
+        69,
+        209
+      ]
+    ],
+    "labels": [
+      "正常還款",
+      "違約"
+    ],
+    "false_positive": 15,
+    "false_negative": 69,
+    "true_positive": 209,
+    "true_negative": 1707
+  },
+  "distribution": {
+    "true_distribution": {
+      "0": 1722,
+      "1": 278
+    },
+    "pred_distribution": {
+      "0": 1776,
+      "1": 224
+    }
+  }
+}

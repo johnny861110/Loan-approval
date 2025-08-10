@@ -1,0 +1,107 @@
+{
+  "model_info": {
+    "model_id": "model_20250810_162453_02ded486",
+    "test_date": "2025-08-10",
+    "test_description": "使用 train_70_percent.csv 進行模型性能評估"
+  },
+  "test_configuration": {
+    "sample_size": 2000,
+    "data_source": "train_70_percent.csv",
+    "label_column": "loan_status",
+    "test_type": "holdout_validation"
+  },
+  "performance_timing": {
+    "total_prediction_time_seconds": 2.157254219055176,
+    "average_prediction_time_ms": 1.078627109527588,
+    "throughput_predictions_per_second": 927.1
+  },
+  "performance_metrics": {
+    "overall": {
+      "accuracy": 0.958,
+      "precision_weighted": 0.957240950772201,
+      "recall_weighted": 0.958,
+      "f1_score_weighted": 0.9560652211052872,
+      "roc_auc": 0.9784381553990258
+    },
+    "per_class": {
+      "class_0_normal_repayment": {
+        "precision": 0.9611486486486487,
+        "recall": 0.9912891986062717,
+        "f1_score": 0.9759862778730702
+      },
+      "class_1_default": {
+        "precision": 0.9330357142857143,
+        "recall": 0.7517985611510791,
+        "f1_score": 0.8326693227091634
+      }
+    }
+  },
+  "confusion_matrix": {
+    "matrix": [
+      [
+        1707,
+        15
+      ],
+      [
+        69,
+        209
+      ]
+    ],
+    "labels": [
+      "正常還款",
+      "違約"
+    ],
+    "interpretation": {
+      "true_negative": 1707,
+      "false_positive": 15,
+      "false_negative": 69,
+      "true_positive": 209
+    },
+    "error_rates": {
+      "false_positive_rate": 0.0087,
+      "false_negative_rate": 0.2482,
+      "false_discovery_rate": 0.067
+    }
+  },
+  "data_distribution": {
+    "true_labels": {
+      "0": 1722,
+      "1": 278
+    },
+    "predicted_labels": {
+      "0": 1776,
+      "1": 224
+    },
+    "class_balance": {
+      "class_0_percentage": 86.1,
+      "class_1_percentage": 13.9
+    }
+  },
+  "business_impact_analysis": {
+    "loan_approval_accuracy": {
+      "correctly_approved": 1707,
+      "incorrectly_approved": 69,
+      "correctly_rejected": 209,
+      "incorrectly_rejected": 15
+    },
+    "risk_assessment": {
+      "missed_defaults": 69,
+      "missed_defaults_percentage": 24.82,
+      "conservative_rejections": 15,
+      "conservative_rejections_percentage": 0.87
+    }
+  },
+  "model_recommendations": {
+    "overall_assessment": "優秀",
+    "key_strengths": [
+      "整體準確率達到 95.8%",
+      "ROC-AUC 分數為 0.9784，顯示優秀的分類能力",
+      "正常還款識別準確率高達 99.1%"
+    ],
+    "areas_for_improvement": [
+      "違約檢測召回率為 75.2%，可能漏判部分高風險案例",
+      "假陰性率為 24.8%，在風控業務中需要關注"
+    ],
+    "production_readiness": "適合生產部署"
+  }
+}

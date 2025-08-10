@@ -1,0 +1,43 @@
+# FastAPI 和 Web 相關
+fastapi>=0.104.0,<1.0
+uvicorn[standard]>=0.24.0,<1.0
+python-multipart>=0.0.6,<1.0
+pydantic>=2.5.0,<3.0
+
+# 機器學習核心套件
+pandas>=2.2.0,<3.0
+numpy>=2.1.0,<3.0
+scikit-learn>=1.5.0,<2.0
+
+# 模型套件
+lightgbm>=4.3.0,<5.0
+xgboost>=2.0.3,<3.0
+
+# 超參數優化
+optuna>=3.6.0,<4.0
+hyperopt>=0.2.7,<1.0
+
+# 模型解釋
+shap>=0.47.0,<1.0
+
+# 數據處理和視覺化
+matplotlib>=3.8.0,<4.0
+seaborn>=0.13.0,<1.0
+
+# 非同步任務 (可選)
+celery[redis]>=5.3.4,<6.0
+redis>=5.0.0,<6.0
+
+# 工具套件
+python-dotenv>=1.0.0,<2.0
+requests>=2.31.0,<3.0
+click>=8.1.0,<9.0
+
+# 開發和測試
+pytest>=7.4.0,<8.0
+pytest-asyncio>=0.21.0,<1.0
+black>=23.11.0,<25.0
+flake8>=6.1.0,<7.0
+
+# 生產環境
+gunicorn>=21.2.0,<23.0

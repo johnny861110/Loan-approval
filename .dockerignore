@@ -1,0 +1,106 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虛擬環境
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 日誌檔案
+*.log
+logs/
+
+# 測試和快取
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 文檔
+*.md
+docs/
+
+# 範例和測試數據
+test_*.csv
+temp_*.csv
+sample_*.csv
+
+# 備份檔案
+*.bak
+*.backup
+
+# 環境變數檔案（安全考量）
+.env
+.env.*
+
+# 輸出目錄（避免包含大檔案）
+outputs/
+models/*.pkl
+app/models/*.pkl
+
+# 臨時檔案
+tmp/
+temp/
+*.tmp
+
+# Jupyter Notebooks（如果不需要在容器中）
+*.ipynb
+notebooks/
+
+# 腳本檔案（不需要在容器中）
+scripts/
+*.bat
+*.sh
+
+# 專案配置（可能包含敏感資訊）
+# 注意：保留 config.yaml 供應用程式使用
+# *.yaml
+# *.yml
+# config/
+
+# 資料檔案（通常透過掛載提供）
+data/
+*.csv
+*.json
+*.parquet
