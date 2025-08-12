@@ -2,23 +2,21 @@
 FastAPI 主程式 - 提供模型訓練、預測和 SHAP 解釋 API
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Query, Form
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import (
+    FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Form
+)
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
+from typing import Any, List
 import pandas as pd
-import json
 import uuid
 import os
 import io
 from datetime import datetime
-import pickle
 import logging
 
-from .model import StackingModel
-from .preprocessing import DataPreprocessor, AdvancedDataPreprocessor
 from .tasks import train_model_task
-from .utils import save_model, load_model, get_model_path
+from .utils import load_model, get_model_path
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +31,7 @@ app = FastAPI(
 
 # 存儲訓練任務狀態
 training_jobs = {}
+
 
 # Pydantic 模型
 class PredictionRequest(BaseModel):
@@ -49,10 +48,12 @@ class PredictionRequest(BaseModel):
     loan_grade: str
     cb_person_default_on_file: str
 
+
 class TrainingResponse(BaseModel):
     job_id: str
     status: str
     message: str
+
 
 class PredictionResponse(BaseModel):
     id: int
@@ -61,9 +62,11 @@ class PredictionResponse(BaseModel):
     label: int
     confidence: float
 
+
 class SHAPGlobalResponse(BaseModel):
     model_id: str
     feature_importance: List[List[Any]]
+
 
 class SHAPLocalResponse(BaseModel):
     id: int
@@ -71,6 +74,7 @@ class SHAPLocalResponse(BaseModel):
     features: List[str]
     shap_values: List[float]
     base_value: float
+
 
 @app.get("/")
 async def root():
@@ -96,6 +100,7 @@ async def root():
             "output_mapping": "'id' 欄位會在所有預測和 SHAP 解釋的輸出中保留用於映射"
         }
     }
+
 
 @app.post("/v1/train/start", response_model=TrainingResponse)
 async def start_training(
@@ -129,7 +134,9 @@ async def start_training(
             'loan_status'  # 目標變數
         ]
         
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        missing_columns = [
+            col for col in required_columns if col not in df.columns
+        ]
         if missing_columns:
             raise HTTPException(
                 status_code=400,
@@ -146,10 +153,10 @@ async def start_training(
         
         # 啟動背景訓練任務
         background_tasks.add_task(
-            train_model_task, 
-            job_id, 
-            df, 
-            use_hyperopt, 
+            train_model_task,
+            job_id,
+            df,
+            use_hyperopt,
             cv_folds,
             training_jobs
         )
@@ -166,6 +173,7 @@ async def start_training(
         logger.error(f"訓練任務啟動失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/v1/train/status/{job_id}")
 async def get_training_status(job_id: str):
     """查詢訓練任務狀態"""
@@ -177,6 +185,7 @@ async def get_training_status(job_id: str):
         "job_id": job_id,
         **job_status
     }
+
 
 @app.post("/v1/predict", response_model=PredictionResponse)
 async def predict(
@@ -225,6 +234,7 @@ async def predict(
     except Exception as e:
         logger.error(f"預測失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/v1/predict/batch")
 async def predict_batch(
@@ -293,12 +303,15 @@ async def predict_batch(
         return StreamingResponse(
             io.BytesIO(csv_buffer.getvalue().encode('utf-8')),
             media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=predictions.csv"}
+            headers={
+                "Content-Disposition": "attachment; filename=predictions.csv"
+            }
         )
         
     except Exception as e:
         logger.error(f"批量預測失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/v1/shap/global", response_model=SHAPGlobalResponse)
 async def get_global_shap(model_id: str):
@@ -315,7 +328,7 @@ async def get_global_shap(model_id: str):
         
         if not hasattr(stacking_model, 'global_shap_values'):
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail="模型未計算 SHAP 值"
             )
         
@@ -327,7 +340,9 @@ async def get_global_shap(model_id: str):
             if isinstance(item, (list, tuple)) and len(item) == 2:
                 feature_name = str(item[0])
                 importance_value = float(item[1])
-                feature_importance_converted.append([feature_name, importance_value])
+                feature_importance_converted.append(
+                    [feature_name, importance_value]
+                )
             else:
                 # 如果格式不符預期，直接轉換
                 feature_importance_converted.append([str(item), 0.0])
@@ -340,6 +355,7 @@ async def get_global_shap(model_id: str):
     except Exception as e:
         logger.error(f"獲取全域 SHAP 失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/v1/shap/local")
 async def get_local_shap(
@@ -367,7 +383,9 @@ async def get_local_shap(
         X_processed = preprocessor.transform(input_df)
         
         # 計算 SHAP 值
-        shap_values, base_value = stacking_model.explain_prediction(X_processed)
+        shap_values, base_value = stacking_model.explain_prediction(
+            X_processed
+        )
         
         return SHAPLocalResponse(
             id=prediction_id,
@@ -380,6 +398,7 @@ async def get_local_shap(
     except Exception as e:
         logger.error(f"獲取 SHAP 解釋失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/v1/shap/batch")
 async def get_batch_shap(
@@ -425,7 +444,9 @@ async def get_batch_shap(
         
         for i, row in enumerate(X_processed.values):
             row_reshaped = row.reshape(1, -1)
-            shap_values, base_value = stacking_model.explain_prediction(row_reshaped)
+            shap_values, base_value = stacking_model.explain_prediction(
+                row_reshaped
+            )
             
             explanation = {
                 'id': ids.iloc[i],
@@ -449,12 +470,16 @@ async def get_batch_shap(
         return StreamingResponse(
             io.BytesIO(csv_buffer.getvalue().encode('utf-8')),
             media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=shap_explanations.csv"}
+            headers={
+                "Content-Disposition":
+                "attachment; filename=shap_explanations.csv"
+            }
         )
         
     except Exception as e:
         logger.error(f"批量 SHAP 解釋失敗: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/v1/models")
 async def list_models():
@@ -480,6 +505,7 @@ async def list_models():
     
     return {"models": models}
 
+
 @app.delete("/v1/models/{model_id}")
 async def delete_model(model_id: str):
     """刪除指定模型"""
@@ -493,14 +519,19 @@ async def delete_model(model_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # 健康檢查
 @app.get("/health")
 async def health_check():
     """健康檢查端點"""
+    models_count = (
+        len(os.listdir("app/models"))
+        if os.path.exists("app/models") else 0
+    )
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "available_models": len(os.listdir("app/models")) if os.path.exists("app/models") else 0
+        "available_models": models_count
     }
 
 if __name__ == "__main__":
