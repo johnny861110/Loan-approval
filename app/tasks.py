@@ -133,12 +133,20 @@ def optimize_hyperparameters_task(
         # 數據預處理 - 減少 pickle 傳輸
         # 分層抽樣，確保類別平衡且減少數據量
         sample_size = min(3000, len(X))
-        X_sample, _, y_sample, _ = train_test_split(
-            X, y, 
-            train_size=sample_size/len(X), 
-            stratify=y, 
-            random_state=42
-        )
+        
+        # 確保 train_size 不會是 1.0
+        train_ratio = min(0.99, sample_size / len(X))
+        
+        if train_ratio < 1.0:
+            X_sample, _, y_sample, _ = train_test_split(
+                X, y, 
+                train_size=train_ratio, 
+                stratify=y, 
+                random_state=42
+            )
+        else:
+            # 如果樣本數量很小，直接使用全部數據
+            X_sample, y_sample = X, y
         
         logger.info(f"使用 {len(X_sample)} 個樣本進行超參數優化（原始: {len(X)}）")
         
@@ -380,6 +388,9 @@ def optimize_hyperparameters_task(
             logger.info(f"🔬 總試驗次數: {len(trials.trials)}")
             logger.info(f"🎯 最佳參數: {best_params_formatted}")
             
+            # 返回優化結果
+            return result
+            
         else:
             raise Exception("沒有成功的試驗")
         
@@ -434,12 +445,13 @@ def train_model_task(
             
             # 數據預處理
             preprocessor = AdvancedDataPreprocessor(create_interactions=True)
-            X, y = preprocessor.fit_transform(df)
+            X, y = preprocessor.fit_transform_with_target(df)
             
             logger.info(f"✅ 數據預處理完成，特徵數量: {X.shape[1]}")
             task_pbar.update(1)
             
-            # 階段 2: 超參數優化（如果啟用）  
+            # 階段 2: 超參數優化（如果啟用）
+            optimized_params = None
             if use_hyperopt:
                 task_pbar.set_description("⚙️ 超參數優化階段")
                 if training_jobs:
@@ -449,21 +461,30 @@ def train_model_task(
                 
                 logger.info("🔬 使用 HyperOpt 優化超參數...")
                 
-                # 啟動超參數優化
+                # 執行超參數優化並獲取結果
                 hyperopt_job_id = f"{job_id}_hyperopt"
                 
                 # 初始化超參數優化任務狀態
                 if training_jobs:
                     training_jobs[hyperopt_job_id] = {
-                        "status": "PENDING",
+                        "status": "PROCESSING",
                         "created_at": datetime.now().isoformat(),
                         "progress": 0,
-                        "message": "超參數優化任務已排入佇列"
+                        "message": "開始超參數優化..."
                     }
                 
-                optimize_hyperparameters_task(
+                # 直接調用超參數優化函數並獲取結果
+                optimize_result = optimize_hyperparameters_task(
                     hyperopt_job_id, X, y, n_trials=50, training_jobs=training_jobs
                 )
+                
+                # 檢查優化結果
+                if optimize_result and 'best_params' in optimize_result:
+                    optimized_params = optimize_result['best_params']
+                    logger.info(f"✅ 超參數優化完成: {optimized_params}")
+                else:
+                    logger.warning("⚠️ 超參數優化失敗，將使用預設參數")
+                
                 task_pbar.update(1)
             else:
                 logger.info("⏭️  跳過超參數優化階段")
@@ -477,55 +498,51 @@ def train_model_task(
                 training_jobs[job_id]["message"] = "正在配置模型架構..."
             
             # 創建和配置模型
-            if use_hyperopt:
-                # 檢查優化結果
-                hyperopt_job_id = f"{job_id}_hyperopt"
-                if (hyperopt_job_id in training_jobs and 
-                    training_jobs[hyperopt_job_id]["status"] == "SUCCESS"):
-                    
-                    best_params = training_jobs[hyperopt_job_id]["result"]["best_params"]
-                    logger.info(f"🎯 使用優化後的超參數: {best_params}")
-                    
-                    # 使用優化的參數創建 StackingModel
-                    stacking_model = StackingModel(cv_folds=cv_folds)
-                    
-                    # 更新 LightGBM 參數
-                    stacking_model.lgb_params.update({
-                        'num_leaves': best_params['lgbm_num_leaves'],
-                        'learning_rate': best_params['lgbm_learning_rate'],
-                        'max_depth': best_params['lgbm_max_depth'],
-                        'min_child_samples': best_params['lgbm_min_child_samples'],
-                        'subsample': best_params['lgbm_subsample'],
-                        'colsample_bytree': best_params['lgbm_colsample_bytree'],
-                        'reg_alpha': best_params.get('lgbm_reg_alpha', 0.1),
-                        'reg_lambda': best_params.get('lgbm_reg_lambda', 0.1)
-                    })
-                    
-                    # 更新 XGBoost 參數
-                    stacking_model.xgb_params.update({
-                        'n_estimators': best_params['xgb_n_estimators'],
-                        'learning_rate': best_params['xgb_learning_rate'],
-                        'max_depth': best_params['xgb_max_depth'],
-                        'min_child_weight': best_params.get('xgb_min_child_weight', 1),
-                        'subsample': best_params['xgb_subsample'],
-                        'colsample_bytree': best_params['xgb_colsample_bytree'],
-                        'reg_alpha': best_params.get('xgb_reg_alpha', 0.1),
-                        'reg_lambda': best_params.get('xgb_reg_lambda', 0.1),
-                        'gamma': best_params.get('xgb_gamma', 0.1)
-                    })
-                    
-                    # 更新 Meta Model
+            stacking_model = StackingModel(cv_folds=cv_folds)
+            
+            if optimized_params:
+                logger.info(f"🎯 使用優化後的超參數: {optimized_params}")
+                
+                # 更新 LightGBM 參數
+                lgb_updates = {}
+                for key, value in optimized_params.items():
+                    if key.startswith('lgbm_'):
+                        param_name = key.replace('lgbm_', '')
+                        if param_name in ['n_estimators', 'num_leaves', 'max_depth', 
+                                         'min_child_samples']:
+                            lgb_updates[param_name] = int(value)
+                        else:
+                            lgb_updates[param_name] = value
+                
+                if lgb_updates:
+                    stacking_model.lgb_params.update(lgb_updates)
+                    logger.info(f"📊 LightGBM 參數已更新: {lgb_updates}")
+                
+                # 更新 XGBoost 參數
+                xgb_updates = {}
+                for key, value in optimized_params.items():
+                    if key.startswith('xgb_'):
+                        param_name = key.replace('xgb_', '')
+                        if param_name in ['n_estimators', 'max_depth', 'min_child_weight']:
+                            xgb_updates[param_name] = int(value)
+                        else:
+                            xgb_updates[param_name] = value
+                
+                if xgb_updates:
+                    stacking_model.xgb_params.update(xgb_updates)
+                    logger.info(f"🚀 XGBoost 參數已更新: {xgb_updates}")
+                
+                # 更新 Meta Model
+                if 'meta_C' in optimized_params:
                     stacking_model.meta_model = LogisticRegression(
-                        C=best_params['meta_C'],
-                        solver=best_params.get('meta_solver', 'lbfgs'),
+                        C=optimized_params['meta_C'],
+                        solver=optimized_params.get('meta_solver', 'lbfgs'),
                         random_state=42,
                         max_iter=1000
                     )
-                else:
-                    logger.warning("⚠️  超參數優化失敗，使用預設參數")
-                    stacking_model = StackingModel(cv_folds=cv_folds)
+                    logger.info(f"🎯 Meta Model 參數已更新: C={optimized_params['meta_C']}")
             else:
-                stacking_model = StackingModel(cv_folds=cv_folds)
+                logger.info("ℹ️ 使用預設超參數")
             
             task_pbar.update(1)
             
@@ -573,6 +590,7 @@ def train_model_task(
                 "feature_count": X.shape[1],
                 "training_samples": len(X),
                 "hyperopt_used": use_hyperopt,
+                "optimized_params": optimized_params,  # 添加優化參數
                 "cv_folds": cv_folds,
                 "completed_at": datetime.now().isoformat()
             }

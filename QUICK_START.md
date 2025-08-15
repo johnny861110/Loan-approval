@@ -4,6 +4,30 @@
 
 這是一個基於機器學習的貸款審批預測系統，使用 Docker 容器化部署，提供 REST API 接口進行貸款申請的自動化審批預測。
 
+## 🐳 Docker Hub 映像
+
+系統已推送到 Docker Hub，可以直接使用：
+
+- **API 服務**: `johnny861110/loan-approval-api:latest`
+- **Worker 服務**: `johnny861110/loan-approval-worker:latest`
+- **版本標籤**: `v1.0.0`, `latest`
+
+### 🚀 一鍵啟動（推薦）
+
+```bash
+# 1. 下載生產環境配置
+curl -o docker-compose.prod.yml https://raw.githubusercontent.com/johnny861110/Loan-approval/main/docker-compose.prod.yml
+
+# 2. 啟動所有服務
+docker-compose -f docker-compose.prod.yml up -d
+
+# 3. 檢查服務狀態
+docker-compose -f docker-compose.prod.yml ps
+
+# 4. 測試 API
+curl http://localhost:8000/health
+```
+
 ### 🏗️ 系統架構
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐

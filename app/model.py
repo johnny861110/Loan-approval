@@ -82,6 +82,49 @@ class StackingModel:
         self.shap_explainer = None
         self.global_shap_values = None
         
+    def update_hyperparameters(self, optimized_params: Dict[str, Any]):
+        """
+        更新超參數（來自 HyperOpt 優化結果）
+        
+        Args:
+            optimized_params: HyperOpt 優化後的參數字典
+        """
+        logger.info("正在更新模型超參數...")
+        
+        # 更新 LightGBM 參數
+        lgb_updates = {}
+        for key, value in optimized_params.items():
+            if key.startswith('lgbm_'):
+                param_name = key.replace('lgbm_', '')
+                lgb_updates[param_name] = value
+        
+        if lgb_updates:
+            self.lgb_params.update(lgb_updates)
+            logger.info(f"LightGBM 參數已更新: {lgb_updates}")
+        
+        # 更新 XGBoost 參數
+        xgb_updates = {}
+        for key, value in optimized_params.items():
+            if key.startswith('xgb_'):
+                param_name = key.replace('xgb_', '')
+                xgb_updates[param_name] = value
+        
+        if xgb_updates:
+            self.xgb_params.update(xgb_updates)
+            logger.info(f"XGBoost 參數已更新: {xgb_updates}")
+        
+        # 更新 Meta Model 參數
+        if 'meta_C' in optimized_params:
+            self.meta_model = LogisticRegression(
+                C=optimized_params['meta_C'],
+                solver=optimized_params.get('meta_solver', 'lbfgs'),
+                random_state=self.random_state,
+                max_iter=1000
+            )
+            logger.info(f"Meta Model 參數已更新: C={optimized_params['meta_C']}")
+        
+        return self
+        
     def _train_base_models(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
         """
         訓練 Base Models 並產生 Out-of-Fold 預測

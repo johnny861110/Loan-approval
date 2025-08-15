@@ -1,0 +1,66 @@
+services:
+  # FastAPI 主應用
+  api:
+    image: johnny861110/loan-approval-api:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app/models:/app/app/models
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+      - MPLCONFIGDIR=/tmp/matplotlib
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Celery Worker
+  worker:
+    image: johnny861110/loan-approval-worker:latest
+    command: uv run celery -A app.tasks worker --loglevel=info --concurrency=2
+    volumes:
+      - ./app/models:/app/app/models
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+      - MPLCONFIGDIR=/tmp/matplotlib
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis (用於 Celery 任務佇列)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:

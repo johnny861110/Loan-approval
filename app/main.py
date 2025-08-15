@@ -211,8 +211,14 @@ async def predict(
         # 數據預處理（現在不包含 id）
         X_processed = preprocessor.transform(input_df)
         
+        # 移除 id 欄位（如果預處理器加入了的話）
+        if hasattr(X_processed, 'columns') and 'id' in X_processed.columns:
+            X_for_prediction = X_processed.drop('id', axis=1)
+        else:
+            X_for_prediction = X_processed
+        
         # 預測
-        probability = stacking_model.predict_proba(X_processed)[0]
+        probability = stacking_model.predict_proba(X_for_prediction)[0]
         label = int(probability >= 0.5)
         confidence = max(probability, 1 - probability)
         
@@ -267,9 +273,15 @@ async def predict_batch(
         df_features = df.drop('id', axis=1)
         X_processed = preprocessor.transform(df_features)
         
+        # 移除 id 欄位（如果預處理器加入了的話）
+        if hasattr(X_processed, 'columns') and 'id' in X_processed.columns:
+            X_for_prediction = X_processed.drop('id', axis=1)
+        else:
+            X_for_prediction = X_processed
+        
         # 進行預測
-        predictions = stacking_model.predict(X_processed)
-        probabilities = stacking_model.predict_proba(X_processed)
+        predictions = stacking_model.predict(X_for_prediction)
+        probabilities = stacking_model.predict_proba(X_for_prediction)
         
         # 處理概率值 - 如果是二元分類，取正類概率
         if probabilities.ndim == 2 and probabilities.shape[1] == 2:
@@ -371,8 +383,16 @@ async def get_local_shap(
         input_df = pd.DataFrame([input_data])
         X_processed = preprocessor.transform(input_df)
         
+        # 移除 id 欄位（如果預處理器加入了的話）
+        if hasattr(X_processed, 'columns') and 'id' in X_processed.columns:
+            X_for_prediction = X_processed.drop('id', axis=1)
+        else:
+            X_for_prediction = X_processed
+        
         # 計算 SHAP 值
-        shap_values, base_value = stacking_model.explain_prediction(X_processed)
+        shap_values, base_value = stacking_model.explain_prediction(
+            X_for_prediction
+        )
         
         return SHAPLocalResponse(
             id=prediction_id,
@@ -425,13 +445,21 @@ async def get_batch_shap(
         df_features = df.drop('id', axis=1)
         X_processed = preprocessor.transform(df_features)
         
+        # 移除 id 欄位（如果預處理器加入了的話）
+        if hasattr(X_processed, 'columns') and 'id' in X_processed.columns:
+            X_for_prediction = X_processed.drop('id', axis=1)
+        else:
+            X_for_prediction = X_processed
+        
         # 計算 SHAP 值
         shap_explanations = []
         feature_names = preprocessor.get_feature_names()
         
-        for i, row in enumerate(X_processed.values):
+        for i, row in enumerate(X_for_prediction.values):
             row_reshaped = row.reshape(1, -1)
-            shap_values, base_value = stacking_model.explain_prediction(row_reshaped)
+            shap_values, base_value = stacking_model.explain_prediction(
+                row_reshaped
+            )
             
             explanation = {
                 'id': ids.iloc[i],
