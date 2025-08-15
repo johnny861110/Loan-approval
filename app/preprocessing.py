@@ -88,11 +88,8 @@ class DataPreprocessor:
         if not self.is_fitted:
             raise ValueError("預處理器尚未訓練，請先調用 fit() 方法")
         
-        # 保存 id 欄位（如果存在）
-        id_column = None
+        # 移除 id 欄位以避免驗證失敗
         if 'id' in df.columns:
-            id_column = df['id'].copy()
-            # 臨時移除 id 欄位以避免驗證失敗
             df_for_processing = df.drop('id', axis=1)
         else:
             df_for_processing = df.copy()
@@ -116,9 +113,8 @@ class DataPreprocessor:
             index=df_for_processing.index
         )
         
-        # 如果原來有 id 欄位，重新加入（但不參與特徵處理）
-        if id_column is not None:
-            X_processed_df['id'] = id_column
+        # 注意：不重新加入 id 欄位，因為它不應該作為特徵
+        # ID 欄位在 API 層面會被單獨處理
         
         return X_processed_df
     

@@ -203,10 +203,12 @@ async def predict(
         # 保存 id 用於回傳
         prediction_id = data.id
         
-        # 準備數據
-        input_df = pd.DataFrame([data.model_dump()])
+        # 準備數據 - 移除 id 欄位用於特徵處理
+        input_data = data.model_dump()
+        input_data.pop('id', None)  # 移除 id 欄位
+        input_df = pd.DataFrame([input_data])
         
-        # 數據預處理
+        # 數據預處理（現在不包含 id）
         X_processed = preprocessor.transform(input_df)
         
         # 預測
@@ -261,8 +263,9 @@ async def predict_batch(
         # 保存 id 用於映射
         ids = df['id'].copy()
         
-        # 預處理數據 (不包含 id)
-        X_processed = preprocessor.transform(df)
+        # 移除 id 欄位進行預處理
+        df_features = df.drop('id', axis=1)
+        X_processed = preprocessor.transform(df_features)
         
         # 進行預測
         predictions = stacking_model.predict(X_processed)
@@ -362,8 +365,10 @@ async def get_local_shap(
         # 保存 id 用於回傳
         prediction_id = data.id
         
-        # 準備數據
-        input_df = pd.DataFrame([data.model_dump()])
+        # 準備數據 - 移除 id 欄位用於特徵處理
+        input_data = data.model_dump()
+        input_data.pop('id', None)  # 移除 id 欄位
+        input_df = pd.DataFrame([input_data])
         X_processed = preprocessor.transform(input_df)
         
         # 計算 SHAP 值
@@ -416,8 +421,9 @@ async def get_batch_shap(
         # 保存 id 用於映射
         ids = df['id'].copy()
         
-        # 預處理數據 (不包含 id)
-        X_processed = preprocessor.transform(df)
+        # 移除 id 欄位進行預處理
+        df_features = df.drop('id', axis=1)
+        X_processed = preprocessor.transform(df_features)
         
         # 計算 SHAP 值
         shap_explanations = []
